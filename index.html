@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show de Prêmios - Sorteador</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary-red: #d32f2f;
+            --dark-red: #8e0000;
+            --gold: #ffd700;
+            --gold-shadow: #b8860b;
+        }
+
+        body {
+            margin: 0; padding: 0; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            overflow-x: hidden; font-family: 'Arial Black', sans-serif;
+            background-color: var(--dark-red);
+        }
+
+        /* --- VISUAL DE FUNDO --- */
+        .background-rays {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: repeating-conic-gradient(from 0deg, var(--primary-red) 0deg 10deg, var(--dark-red) 10deg 20deg);
+            animation: rotate 60s linear infinite; z-index: 1;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            z-index: 2; pointer-events: none;
+        }
+
+        /* --- CONTAINER PRINCIPAL --- */
+        .container {
+            position: relative; z-index: 10;
+            background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
+            padding: 30px; border-radius: 20px;
+            border: 5px solid var(--gold);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            text-align: center; width: 90%; max-width: 500px;
+            max-height: 90vh; overflow-y: auto;
+        }
+
+        .logo-placeholder img { max-height: 100px; width: auto; margin-bottom: 20px; }
+        h1 { color: var(--primary-red); font-size: 26px; margin: 0 0 20px 0; text-transform: uppercase; }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-wrapper { flex: 1; text-align: left; }
+        label { color: #555; font-size: 14px; display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="number"] { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 18px; text-align: center; font-weight: bold; box-sizing: border-box; }
+        
+        button.btn-sortear {
+            background: linear-gradient(to bottom, #ffeb3b, #fbc02d);
+            border: none; width: 100%; padding: 15px; margin-top: 10px;
+            font-size: 20px; color: #d84315; font-weight: 900; text-transform: uppercase;
+            border-radius: 50px; cursor: pointer;
+            box-shadow: 0 5px 0 var(--gold-shadow); transition: transform 0.1s;
+        }
+        button.btn-sortear:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--gold-shadow); }
+
+        /* --- BOLAS DO RESULTADO --- */
+        #resultado { margin-top: 30px; display: none; }
+        #numeros-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        
+        .numero-bola {
+            display: flex; justify-content: center; align-items: center;
+            width: 75px; height: 75px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff5252, #b71c1c);
+            color: white; font-size: 28px; font-weight: bold; font-family: 'Arial', sans-serif;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3); border: 2px solid #fff;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* --- BOTÃO SECRETO --- */
+        .admin-btn {
+            position: fixed; bottom: 10px; right: 10px;
+            background: transparent; border: none; font-size: 20px;
+            opacity: 0.1; cursor: pointer; z-index: 100;
+        }
+        .admin-btn:hover { opacity: 1; }
+        
+        .status-vicio {
+            font-size: 10px; color: red; margin-top: 5px; display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="background-rays"></div>
+    <div class="vignette"></div>
+
+    <div class="container">
+        <div class="logo-placeholder">
+            <img src="LOGO.png" alt="Logo">
+        </div>
+
+        <h1>Show de Prêmios</h1>
+
+        <div class="input-group">
+            <div class="input-wrapper"> <label>Do Nº</label> <input type="number" id="min" value="1"> </div>
+            <div class="input-wrapper"> <label>Ao Nº</label> <input type="number" id="max" value="2000"> </div>
+        </div>
+
+        <div style="text-align: left;"> 
+            <label>Quantidade de Prêmios:</label> 
+            <input type="number" id="qtd" value="1" min="1"> 
+        </div>
+
+        <button class="btn-sortear" onclick="sortear()">SORTEAR AGORA!</button>
+
+        <div id="msg-vicio" class="status-vicio">⚠ MODO MANUAL ATIVADO</div>
+
+        <div id="resultado">
+            <div id="numeros-container"></div>
+        </div>
+    </div>
+
+    <button class="admin-btn" onclick="abrirPainelSecreto()">⚙️</button>
+
+    <script>
+        // Lista de números "forçados"
+        let filaManipulada = [];
+
+        function abrirPainelSecreto() {
+            let senha = prompt("Senha de Administrador:");
+            if (senha === "1234") {
+                let entrada = prompt("Digite os números que devem sair (separados por vírgula):", filaManipulada.join(","));
+                if (entrada !== null) {
+                    // Limpa espaços e converte para números
+                    filaManipulada = entrada.split(',')
+                        .map(n => parseInt(n.trim()))
+                        .filter(n => !isNaN(n));
+                    
+                    alert("Sequência definida: " + filaManipulada.join(", "));
+                    atualizarStatus();
+                }
+            } else {
+                alert("Senha incorreta.");
+            }
+        }
+
+        function atualizarStatus() {
+            const msg = document.getElementById('msg-vicio');
+            if(filaManipulada.length > 0) {
+                msg.style.display = 'block';
+                msg.innerText = "⚠ Próximos: " + filaManipulada.length;
+            } else {
+                msg.style.display = 'none';
+            }
+        }
+
+        function sortear() {
+            const min = parseInt(document.getElementById('min').value);
+            const max = parseInt(document.getElementById('max').value);
+            const qtd = parseInt(document.getElementById('qtd').value);
+            const container = document.getElementById('numeros-container');
+            
+            if (min >= max || qtd < 1) { alert("Verifique os parâmetros."); return; }
+
+            let numerosSorteados = [];
+            
+            // --- LÓGICA DE SORTEIO MISTO (MANUAL + ALEATÓRIO) ---
+            for (let i = 0; i < qtd; i++) {
+                if (filaManipulada.length > 0) {
+                    // Se tiver número na fila forçada, tira o primeiro da fila
+                    let proximo = filaManipulada.shift();
+                    numerosSorteados.push(proximo);
+                } else {
+                    // Se acabou a fila forçada, gera aleatório
+                    let n;
+                    let tentativas = 0;
+                    do {
+                        n = Math.floor(Math.random() * (max - min + 1)) + min;
+                        tentativas++;
+                    } while (numerosSorteados.includes(n) && tentativas < 100);
+                    numerosSorteados.push(n);
+                }
+            }
+            
+            atualizarStatus(); // Atualiza contador de números viciados restantes
+
+            // Exibir Resultados
+            document.getElementById('resultado').style.display = 'block';
+            container.innerHTML = ''; 
+            
+            numerosSorteados.forEach((n, i) => {
+                setTimeout(() => {
+                    let bola = document.createElement('div');
+                    bola.className = 'numero-bola';
+                    bola.innerText = n;
+                    container.appendChild(bola);
+                }, i * 200);
+            });
+            
+            // Efeito de Confete
+            var end = Date.now() + (1000);
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+    </script>
+</body>
+</html>
