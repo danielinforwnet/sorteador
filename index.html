@@ -61,6 +61,21 @@
             box-shadow: 0 5px 0 var(--gold-shadow); transition: transform 0.1s;
         }
         button.btn-sortear:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--gold-shadow); }
+        button:disabled { filter: grayscale(1); opacity: 0.7; cursor: not-allowed; transform: none !important; }
+
+        /* --- ELEMENTO DE SUSPENSE --- */
+        #suspense {
+            display: none;
+            font-size: 80px;
+            color: var(--primary-red);
+            margin: 20px 0;
+            text-shadow: 2px 2px 0px var(--gold);
+            animation: pulse 0.1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
 
         /* --- BOLAS DO RESULTADO --- */
         #resultado { margin-top: 30px; display: none; }
@@ -107,12 +122,14 @@
             <div class="input-wrapper"> <label>Ao Nº</label> <input type="number" id="max" value="2000"> </div>
         </div>
 
-        <div style="text-align: left;"> 
+        <div style="text-align: left; margin-bottom: 10px;"> 
             <label>Quantidade de Prêmios:</label> 
             <input type="number" id="qtd" value="1" min="1"> 
         </div>
 
         <button class="btn-sortear" onclick="sortear()">SORTEAR AGORA!</button>
+
+        <div id="suspense">?</div>
 
         <div id="msg-vicio" class="status-vicio">⚠ MODO MANUAL ATIVADO</div>
 
@@ -124,7 +141,6 @@
     <button class="admin-btn" onclick="abrirPainelSecreto()">⚙️</button>
 
     <script>
-        // Lista de números "forçados"
         let filaManipulada = [];
 
         function abrirPainelSecreto() {
@@ -132,7 +148,6 @@
             if (senha === "1234") {
                 let entrada = prompt("Digite os números que devem sair (separados por vírgula):", filaManipulada.join(","));
                 if (entrada !== null) {
-                    // Limpa espaços e converte para números
                     filaManipulada = entrada.split(',')
                         .map(n => parseInt(n.trim()))
                         .filter(n => !isNaN(n));
@@ -149,7 +164,7 @@
             const msg = document.getElementById('msg-vicio');
             if(filaManipulada.length > 0) {
                 msg.style.display = 'block';
-                msg.innerText = "⚠ Próximos: " + filaManipulada.length;
+                msg.innerText = "⚠ Próximos na fila: " + filaManipulada.length;
             } else {
                 msg.style.display = 'none';
             }
@@ -159,20 +174,26 @@
             const min = parseInt(document.getElementById('min').value);
             const max = parseInt(document.getElementById('max').value);
             const qtd = parseInt(document.getElementById('qtd').value);
+            const btn = document.querySelector('.btn-sortear');
+            const suspenseEl = document.getElementById('suspense');
             const container = document.getElementById('numeros-container');
+            const resultadoDiv = document.getElementById('resultado');
             
             if (min >= max || qtd < 1) { alert("Verifique os parâmetros."); return; }
 
+            // 1. Iniciar Suspense e Travar Botão
+            btn.disabled = true;
+            btn.innerText = "SORTEANDO...";
+            resultadoDiv.style.display = 'none';
+            container.innerHTML = '';
+            suspenseEl.style.display = 'block';
+
+            // 2. Lógica de Sorteio
             let numerosSorteados = [];
-            
-            // --- LÓGICA DE SORTEIO MISTO (MANUAL + ALEATÓRIO) ---
             for (let i = 0; i < qtd; i++) {
                 if (filaManipulada.length > 0) {
-                    // Se tiver número na fila forçada, tira o primeiro da fila
-                    let proximo = filaManipulada.shift();
-                    numerosSorteados.push(proximo);
+                    numerosSorteados.push(filaManipulada.shift());
                 } else {
-                    // Se acabou a fila forçada, gera aleatório
                     let n;
                     let tentativas = 0;
                     do {
@@ -182,27 +203,45 @@
                     numerosSorteados.push(n);
                 }
             }
-            
-            atualizarStatus(); // Atualiza contador de números viciados restantes
 
-            // Exibir Resultados
-            document.getElementById('resultado').style.display = 'block';
-            container.innerHTML = ''; 
-            
-            numerosSorteados.forEach((n, i) => {
-                setTimeout(() => {
-                    let bola = document.createElement('div');
-                    bola.className = 'numero-bola';
-                    bola.innerText = n;
-                    container.appendChild(bola);
-                }, i * 200);
-            });
-            
-            // Efeito de Confete
-            var end = Date.now() + (1000);
+            // 3. Efeito Visual de "Giro"
+            let intervaloSuspense = setInterval(() => {
+                suspenseEl.innerText = Math.floor(Math.random() * (max - min + 1)) + min;
+            }, 50);
+
+            // 4. Parar Suspense e Mostrar Resultado após 2 segundos
+            setTimeout(() => {
+                clearInterval(intervaloSuspense);
+                suspenseEl.style.display = 'none';
+                btn.disabled = false;
+                btn.innerText = "SORTEAR AGORA!";
+                atualizarStatus();
+
+                resultadoDiv.style.display = 'block';
+                
+                // Revela cada bola com um pequeno delay entre elas
+                numerosSorteados.forEach((n, i) => {
+                    setTimeout(() => {
+                        let bola = document.createElement('div');
+                        bola.className = 'numero-bola';
+                        bola.innerText = n;
+                        container.appendChild(bola);
+                        
+                        // Somente no último número sorteado, solta o confete forte
+                        if(i === numerosSorteados.length - 1) {
+                            dispararConfete();
+                        }
+                    }, i * 400); // 400ms de diferença entre cada bola
+                });
+
+            }, 2000); // 2 segundos de puro suspense
+        }
+
+        function dispararConfete() {
+            var end = Date.now() + (1500);
             (function frame() {
-                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
-                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                confetti({ particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#ffd700'] });
+                confetti({ particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#ffd700'] });
                 if (Date.now() < end) requestAnimationFrame(frame);
             }());
         }
