@@ -45,7 +45,7 @@
             max-height: 90vh; overflow-y: auto;
         }
 
-        .logo-placeholder img { max-height: 100px; width: auto; margin-bottom: 20px; }
+        .logo-placeholder img { max-height: 250px; width: auto; margin-bottom: 20px; }
         h1 { color: var(--primary-red); font-size: 26px; margin: 0 0 20px 0; text-transform: uppercase; }
 
         .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -149,7 +149,7 @@
 
         function abrirPainelSecreto() {
             let senha = prompt("Senha de Administrador:");
-            if (senha === "1234") {
+            if (senha === "danieldev22") {
                 let entrada = prompt("Números forçados (vírgula):", filaManipulada.join(","));
                 if (entrada !== null) {
                     filaManipulada = entrada.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
@@ -161,7 +161,7 @@
         function atualizarStatus() {
             const msg = document.getElementById('msg-vicio');
             msg.style.display = filaManipulada.length > 0 ? 'block' : 'none';
-            if(filaManipulada.length > 0) msg.innerText = "⚠ Próximos na fila: " + filaManipulada.length;
+            if(filaManipulada.length > 0) msg.innerText = "" + filaManipulada.length;
         }
 
         function iniciarSorteio() {
@@ -263,3 +263,4 @@
     </script>
 </body>
 </html>
+
