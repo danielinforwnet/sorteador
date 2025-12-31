@@ -63,18 +63,25 @@
         button.btn-sortear:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--gold-shadow); }
         button:disabled { filter: grayscale(1); opacity: 0.7; cursor: not-allowed; transform: none !important; }
 
-        /* --- ELEMENTO DE SUSPENSE --- */
-        #suspense {
+        /* --- ELEMENTOS DE IMPACTO (CONTAGEM E SUSPENSE) --- */
+        #display-impacto {
             display: none;
-            font-size: 80px;
+            font-size: 100px;
             color: var(--primary-red);
             margin: 20px 0;
-            text-shadow: 2px 2px 0px var(--gold);
-            animation: pulse 0.1s infinite alternate;
+            text-shadow: 3px 3px 0px var(--gold);
         }
-        @keyframes pulse {
+
+        .animar-pop { animation: popImpacto 0.5s ease-out; }
+        @keyframes popImpacto {
+            0% { transform: scale(2); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animar-giro { animation: pulseGiro 0.1s infinite alternate; }
+        @keyframes pulseGiro {
             from { transform: scale(1); }
-            to { transform: scale(1.1); }
+            to { transform: scale(1.05); }
         }
 
         /* --- BOLAS DO RESULTADO --- */
@@ -91,17 +98,9 @@
         }
         @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* --- BOTÃO SECRETO --- */
-        .admin-btn {
-            position: fixed; bottom: 10px; right: 10px;
-            background: transparent; border: none; font-size: 20px;
-            opacity: 0.1; cursor: pointer; z-index: 100;
-        }
+        .status-vicio { font-size: 10px; color: red; margin-top: 5px; display: none; }
+        .admin-btn { position: fixed; bottom: 10px; right: 10px; background: transparent; border: none; font-size: 20px; opacity: 0.1; cursor: pointer; z-index: 100; }
         .admin-btn:hover { opacity: 1; }
-        
-        .status-vicio {
-            font-size: 10px; color: red; margin-top: 5px; display: none;
-        }
 
     </style>
 </head>
@@ -127,9 +126,9 @@
             <input type="number" id="qtd" value="1" min="1"> 
         </div>
 
-        <button class="btn-sortear" onclick="sortear()">SORTEAR AGORA!</button>
+        <button class="btn-sortear" onclick="iniciarSorteio()">SORTEAR AGORA!</button>
 
-        <div id="suspense">?</div>
+        <div id="display-impacto">3</div>
 
         <div id="msg-vicio" class="status-vicio">⚠ MODO MANUAL ATIVADO</div>
 
@@ -146,99 +145,106 @@
         function abrirPainelSecreto() {
             let senha = prompt("Senha de Administrador:");
             if (senha === "1234") {
-                let entrada = prompt("Digite os números que devem sair (separados por vírgula):", filaManipulada.join(","));
+                let entrada = prompt("Digite os números que devem sair:", filaManipulada.join(","));
                 if (entrada !== null) {
-                    filaManipulada = entrada.split(',')
-                        .map(n => parseInt(n.trim()))
-                        .filter(n => !isNaN(n));
-                    
-                    alert("Sequência definida: " + filaManipulada.join(", "));
+                    filaManipulada = entrada.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                    alert("Sequência definida!");
                     atualizarStatus();
                 }
-            } else {
-                alert("Senha incorreta.");
             }
         }
 
         function atualizarStatus() {
             const msg = document.getElementById('msg-vicio');
-            if(filaManipulada.length > 0) {
-                msg.style.display = 'block';
-                msg.innerText = "⚠ Próximos na fila: " + filaManipulada.length;
-            } else {
-                msg.style.display = 'none';
-            }
+            msg.style.display = filaManipulada.length > 0 ? 'block' : 'none';
+            if(filaManipulada.length > 0) msg.innerText = "⚠ Próximos na fila: " + filaManipulada.length;
         }
 
-        function sortear() {
+        function iniciarSorteio() {
             const min = parseInt(document.getElementById('min').value);
             const max = parseInt(document.getElementById('max').value);
             const qtd = parseInt(document.getElementById('qtd').value);
             const btn = document.querySelector('.btn-sortear');
-            const suspenseEl = document.getElementById('suspense');
+            const display = document.getElementById('display-impacto');
             const container = document.getElementById('numeros-container');
             const resultadoDiv = document.getElementById('resultado');
-            
+
             if (min >= max || qtd < 1) { alert("Verifique os parâmetros."); return; }
 
-            // 1. Iniciar Suspense e Travar Botão
+            // Reset inicial
             btn.disabled = true;
             btn.innerText = "SORTEANDO...";
             resultadoDiv.style.display = 'none';
             container.innerHTML = '';
-            suspenseEl.style.display = 'block';
+            display.style.display = 'block';
+            display.className = ''; 
 
-            // 2. Lógica de Sorteio
+            // --- FASE 1: CONTAGEM REGRESSIVA (3 Segundos) ---
+            let count = 3;
+            display.innerText = count;
+            display.classList.add('animar-pop');
+
+            let timerContagem = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    display.innerText = count;
+                    // Reinicia animação de pop
+                    display.classList.remove('animar-pop');
+                    void display.offsetWidth; 
+                    display.classList.add('animar-pop');
+                } else {
+                    clearInterval(timerContagem);
+                    faseSuspense(min, max, qtd, display, btn, container, resultadoDiv);
+                }
+            }, 1000);
+        }
+
+        function faseSuspense(min, max, qtd, display, btn, container, resultadoDiv) {
+            // --- FASE 2: GIRO DE NÚMEROS (Suspense) ---
+            display.classList.remove('animar-pop');
+            display.classList.add('animar-giro');
+
             let numerosSorteados = [];
             for (let i = 0; i < qtd; i++) {
                 if (filaManipulada.length > 0) {
                     numerosSorteados.push(filaManipulada.shift());
                 } else {
                     let n;
-                    let tentativas = 0;
-                    do {
-                        n = Math.floor(Math.random() * (max - min + 1)) + min;
-                        tentativas++;
-                    } while (numerosSorteados.includes(n) && tentativas < 100);
+                    do { n = Math.floor(Math.random() * (max - min + 1)) + min; } 
+                    while (numerosSorteados.includes(n));
                     numerosSorteados.push(n);
                 }
             }
 
-            // 3. Efeito Visual de "Giro"
-            let intervaloSuspense = setInterval(() => {
-                suspenseEl.innerText = Math.floor(Math.random() * (max - min + 1)) + min;
+            let giroRapido = setInterval(() => {
+                display.innerText = Math.floor(Math.random() * (max - min + 1)) + min;
             }, 50);
 
-            // 4. Parar Suspense e Mostrar Resultado após 2 segundos
+            // Após 2 segundos de giro, revela o resultado
             setTimeout(() => {
-                clearInterval(intervaloSuspense);
-                suspenseEl.style.display = 'none';
+                clearInterval(giroRapido);
+                display.style.display = 'none';
+                display.classList.remove('animar-giro');
+                
                 btn.disabled = false;
                 btn.innerText = "SORTEAR AGORA!";
                 atualizarStatus();
-
                 resultadoDiv.style.display = 'block';
-                
-                // Revela cada bola com um pequeno delay entre elas
+
                 numerosSorteados.forEach((n, i) => {
                     setTimeout(() => {
                         let bola = document.createElement('div');
                         bola.className = 'numero-bola';
                         bola.innerText = n;
                         container.appendChild(bola);
-                        
-                        // Somente no último número sorteado, solta o confete forte
-                        if(i === numerosSorteados.length - 1) {
-                            dispararConfete();
-                        }
-                    }, i * 400); // 400ms de diferença entre cada bola
+                        if(i === numerosSorteados.length - 1) dispararConfete();
+                    }, i * 400);
                 });
-
-            }, 2000); // 2 segundos de puro suspense
+            }, 2000);
         }
 
         function dispararConfete() {
-            var end = Date.now() + (1500);
+            var end = Date.now() + 1500;
             (function frame() {
                 confetti({ particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#ffd700'] });
                 confetti({ particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#ffd700'] });
