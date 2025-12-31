@@ -35,7 +35,7 @@
             text-align: center; width: 90%; max-width: 450px;
         }
 
-        /* Ocultando a seleção de números */
+        /* Ocultando a seleção de números conforme solicitado */
         .config-invisivel {
             display: none;
         }
@@ -108,7 +108,7 @@
         const baseNomes = {
             "1": "DANIEL OLIVEIRA",
             "2": "JOÃO DA SILVA",
-            // Adicione os outros nomes conforme a sua planilha
+            // Adicione os outros nomes da sua planilha aqui
         };
 
         let filaManipulada = [];
@@ -182,7 +182,14 @@
                 </div>
             `;
             
+            // Lógica para tocar palmas por apenas 5 segundos
+            audioPalmas.currentTime = 0;
             audioPalmas.play();
+            setTimeout(() => {
+                audioPalmas.pause();
+                audioPalmas.currentTime = 0;
+            }, 5000); // 5000ms = 5 segundos
+
             dispararConfete();
             const btn = document.querySelector('.btn-sortear');
             btn.disabled = false;
