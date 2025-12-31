@@ -63,7 +63,7 @@
         button.btn-sortear:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--gold-shadow); }
         button:disabled { filter: grayscale(1); opacity: 0.7; cursor: not-allowed; transform: none !important; }
 
-        /* --- ELEMENTOS DE IMPACTO (CONTAGEM E SUSPENSE) --- */
+        /* --- ELEMENTOS DE IMPACTO --- */
         #display-impacto {
             display: none;
             font-size: 100px;
@@ -84,7 +84,7 @@
             to { transform: scale(1.05); }
         }
 
-        /* --- BOLAS DO RESULTADO --- */
+        /* --- RESULTADOS --- */
         #resultado { margin-top: 30px; display: none; }
         #numeros-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
         
@@ -105,6 +105,9 @@
     </style>
 </head>
 <body>
+
+    <audio id="audio-batuque" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
+    <audio id="audio-palmas" src="https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3" preload="auto"></audio>
 
     <div class="background-rays"></div>
     <div class="vignette"></div>
@@ -141,14 +144,15 @@
 
     <script>
         let filaManipulada = [];
+        const audioBatuque = document.getElementById('audio-batuque');
+        const audioPalmas = document.getElementById('audio-palmas');
 
         function abrirPainelSecreto() {
             let senha = prompt("Senha de Administrador:");
             if (senha === "1234") {
-                let entrada = prompt("Digite os números que devem sair:", filaManipulada.join(","));
+                let entrada = prompt("Números forçados (vírgula):", filaManipulada.join(","));
                 if (entrada !== null) {
                     filaManipulada = entrada.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
-                    alert("Sequência definida!");
                     atualizarStatus();
                 }
             }
@@ -171,7 +175,7 @@
 
             if (min >= max || qtd < 1) { alert("Verifique os parâmetros."); return; }
 
-            // Reset inicial
+            // Configuração inicial
             btn.disabled = true;
             btn.innerText = "SORTEANDO...";
             resultadoDiv.style.display = 'none';
@@ -179,7 +183,12 @@
             display.style.display = 'block';
             display.className = ''; 
 
-            // --- FASE 1: CONTAGEM REGRESSIVA (3 Segundos) ---
+            // INICIAR SOM DE BATUQUE/TAMBOR
+            audioBatuque.currentTime = 0;
+            audioBatuque.loop = true;
+            audioBatuque.play();
+
+            // --- FASE 1: CONTAGEM REGRESSIVA ---
             let count = 3;
             display.innerText = count;
             display.classList.add('animar-pop');
@@ -188,7 +197,6 @@
                 count--;
                 if (count > 0) {
                     display.innerText = count;
-                    // Reinicia animação de pop
                     display.classList.remove('animar-pop');
                     void display.offsetWidth; 
                     display.classList.add('animar-pop');
@@ -200,7 +208,7 @@
         }
 
         function faseSuspense(min, max, qtd, display, btn, container, resultadoDiv) {
-            // --- FASE 2: GIRO DE NÚMEROS (Suspense) ---
+            // --- FASE 2: GIRO RÁPIDO ---
             display.classList.remove('animar-pop');
             display.classList.add('animar-giro');
 
@@ -220,31 +228,38 @@
                 display.innerText = Math.floor(Math.random() * (max - min + 1)) + min;
             }, 50);
 
-            // Após 2 segundos de giro, revela o resultado
             setTimeout(() => {
+                // PARAR BATUQUE
                 clearInterval(giroRapido);
-                display.style.display = 'none';
-                display.classList.remove('animar-giro');
+                audioBatuque.pause();
                 
+                display.style.display = 'none';
                 btn.disabled = false;
                 btn.innerText = "SORTEAR AGORA!";
                 atualizarStatus();
                 resultadoDiv.style.display = 'block';
 
+                // --- FASE 3: REVELAÇÃO E PALMAS ---
                 numerosSorteados.forEach((n, i) => {
                     setTimeout(() => {
                         let bola = document.createElement('div');
                         bola.className = 'numero-bola';
                         bola.innerText = n;
                         container.appendChild(bola);
-                        if(i === numerosSorteados.length - 1) dispararConfete();
+                        
+                        // No último número, solta confete e toca palmas
+                        if(i === numerosSorteados.length - 1) {
+                            audioPalmas.currentTime = 0;
+                            audioPalmas.play();
+                            dispararConfete();
+                        }
                     }, i * 400);
                 });
             }, 2000);
         }
 
         function dispararConfete() {
-            var end = Date.now() + 1500;
+            var end = Date.now() + 2000;
             (function frame() {
                 confetti({ particleCount: 7, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#ffd700'] });
                 confetti({ particleCount: 7, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#ffd700'] });
