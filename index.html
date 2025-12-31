@@ -106,8 +106,8 @@
 </head>
 <body>
 
-    <audio id="audio-batuque" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
-    <audio id="audio-palmas" src="https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3" preload="auto"></audio>
+    <audio id="audio-batuque" src="batuque.mp3" preload="auto"></audio>
+    <audio id="audio-palmas" src="palmas.mp3" preload="auto"></audio>
 
     <div class="background-rays"></div>
     <div class="vignette"></div>
@@ -175,7 +175,6 @@
 
             if (min >= max || qtd < 1) { alert("Verifique os parâmetros."); return; }
 
-            // Configuração inicial
             btn.disabled = true;
             btn.innerText = "SORTEANDO...";
             resultadoDiv.style.display = 'none';
@@ -183,12 +182,11 @@
             display.style.display = 'block';
             display.className = ''; 
 
-            // INICIAR SOM DE BATUQUE/TAMBOR
+            // Toca o batuque (deve estar na mesma pasta do index.html)
             audioBatuque.currentTime = 0;
             audioBatuque.loop = true;
-            audioBatuque.play();
+            audioBatuque.play().catch(e => console.log("Erro ao tocar som:", e));
 
-            // --- FASE 1: CONTAGEM REGRESSIVA ---
             let count = 3;
             display.innerText = count;
             display.classList.add('animar-pop');
@@ -208,7 +206,6 @@
         }
 
         function faseSuspense(min, max, qtd, display, btn, container, resultadoDiv) {
-            // --- FASE 2: GIRO RÁPIDO ---
             display.classList.remove('animar-pop');
             display.classList.add('animar-giro');
 
@@ -229,7 +226,6 @@
             }, 50);
 
             setTimeout(() => {
-                // PARAR BATUQUE
                 clearInterval(giroRapido);
                 audioBatuque.pause();
                 
@@ -239,7 +235,6 @@
                 atualizarStatus();
                 resultadoDiv.style.display = 'block';
 
-                // --- FASE 3: REVELAÇÃO E PALMAS ---
                 numerosSorteados.forEach((n, i) => {
                     setTimeout(() => {
                         let bola = document.createElement('div');
@@ -247,7 +242,6 @@
                         bola.innerText = n;
                         container.appendChild(bola);
                         
-                        // No último número, solta confete e toca palmas
                         if(i === numerosSorteados.length - 1) {
                             audioPalmas.currentTime = 0;
                             audioPalmas.play();
